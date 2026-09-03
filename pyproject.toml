@@ -1,11 +1,10 @@
 [project]
 name = "agents-news-ouroboros"
 version = "0.1.0"
-description = "Новостной конвейер экспертов с независимой проверкой, запускаемый и планируемый через Ouroboros CLI"
+description = "Новостной конвейер экспертов с независимой проверкой: каждая роль — задача Ouroboros CLI, расписание — cron Ouroboros"
 requires-python = ">=3.11"
 dependencies = [
     "feedparser>=6.0",
-    "openai>=1.40",
     "pyyaml>=6.0",
     "trafilatura>=1.8",
 ]
@@ -17,7 +16,6 @@ dev = [
 
 [project.scripts]
 agents-news-ouroboros = "agents_news_ouroboros.main:main"
-agents-news-ouroboros-web = "agents_news_ouroboros.web:main"
 agents-news-ouroboros-report = "agents_news_ouroboros.report:main"
 
 [build-system]

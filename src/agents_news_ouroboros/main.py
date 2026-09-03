@@ -3,7 +3,6 @@
 import argparse
 import dataclasses
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -18,7 +17,7 @@ from agents_news_ouroboros.feeds import (
     load_state,
     save_state,
 )
-from agents_news_ouroboros.llm import Gateway
+from agents_news_ouroboros.llm import OuroborosCLI
 from agents_news_ouroboros.pipeline import Expert, process_item
 
 logger = logging.getLogger(__name__)
@@ -37,9 +36,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     config = yaml.safe_load(args.config.read_text(encoding="utf-8"))
-    if "LITELLM_API_KEY" in os.environ:
-        config["gateway"]["api_key"] = os.environ["LITELLM_API_KEY"]
-    gateway = Gateway(**config["gateway"])
+    gateway = OuroborosCLI(**config.get("ouroboros", {}))
     config["experts"] = [Expert(**e) for e in config["experts"]]
     models = config["models"]
 
