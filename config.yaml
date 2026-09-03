@@ -6,6 +6,14 @@ ouroboros:
   disable_tools_file: prompts/disable-tools.txt   # роли — чистый текст, без инструментов
   # url: http://127.0.0.1:8765  # адрес сервера, если не по умолчанию
 
+# HTTP-мост для провайдера Ouroboros (make bridge): его runtime не доверяет
+# self-signed сертификату шлюза и не читает SSL_CERT_FILE, поэтому в настройке
+# Ouroboros OPENAI_COMPATIBLE_BASE_URL указывается http://127.0.0.1:4000/v1.
+bridge:
+  listen: 127.0.0.1:4000
+  upstream: https://litellm.home.arpa
+  ca_file: certs/litellm.home.arpa.pem
+
 feeds:
   - https://lenta.ru/rss/news
   - https://habr.com/ru/rss/news/

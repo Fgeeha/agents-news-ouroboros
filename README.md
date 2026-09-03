@@ -57,11 +57,24 @@ RSS-ленты → дедупликация (id, Жаккар по словам,
 
 Нужны [uv](https://docs.astral.sh/uv/) и `ouroboros` в `PATH` с запущенным
 сервером (`make status` должен ответить). Провайдер модели настраивается в
-самом Ouroboros (`ouroboros settings set OPENAI_COMPATIBLE_BASE_URL …`),
-проект его не трогает.
+самом Ouroboros:
+
+```bash
+ouroboros settings set OPENAI_COMPATIBLE_BASE_URL http://127.0.0.1:4000/v1
+ouroboros settings set OPENAI_COMPATIBLE_API_KEY <ключ шлюза>
+```
+
+`http://127.0.0.1:4000` — это `make bridge`: runtime Ouroboros строит
+HTTP-клиент с `trust_env=False`, поэтому self-signed сертификат шлюза
+LiteLLM ему не подсунуть ни через `SSL_CERT_FILE`, ни через системное
+хранилище, а nginx перед шлюзом маршрутизирует по заголовку `Host`. Мост
+(`bridge.py`, stdlib) принимает http на localhost, подставляет `Host` и
+проверяет сертификат по `certs/litellm.home.arpa.pem`. Если шлюз доступен
+по обычному https или http — мост не нужен, укажите его адрес напрямую.
 
 ```bash
 make install
+make bridge                  # терминал 1: мост к шлюзу (если нужен)
 make status                  # сервер Ouroboros отвечает
 make run-once                # одна новость, без состояния
 make run LIMIT=3             # боевой прогон, не больше 3 новостей
@@ -82,11 +95,12 @@ Cron-задача — это тоже агент Ouroboros: по промпту 
 Makefile                          # все операции; секция «Расписание Ouroboros»
 prompts/run.md                    # промпт cron-задачи
 prompts/disable-tools.txt         # инструменты, отключаемые у ролей
-config.yaml                       # параметры Ouroboros, ленты, эксперты
+config.yaml                       # параметры Ouroboros и моста, ленты, эксперты
 src/agents_news_ouroboros/
   llm.py                          # OuroborosCLI: роль -> ouroboros run
+  bridge.py                       # http-мост localhost -> https-шлюз для провайдера Ouroboros
   report.py                       # разбор jsonl-потока, сводка, код возврата
   main.py, feeds.py, pipeline.py  # конвейер
-tests/                            # офлайн-тесты: конвейер, разбор, CLI-обёртка
+tests/                            # офлайн-тесты: конвейер, разбор, CLI-обёртка, мост
 docs/superpowers/specs/           # проектная спецификация
 ```

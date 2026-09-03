@@ -2,7 +2,8 @@
 # Зависимости ставятся только через uv — не pip и не poetry.
 # Всё взаимодействие с Ouroboros — только через его CLI: каждая роль конвейера
 # ставится как `ouroboros run`, расписание — `ouroboros schedule`. Сервер
-# Ouroboros должен быть уже запущен (make status).
+# Ouroboros должен быть уже запущен (make status), а его провайдер — смотреть
+# на make bridge, если шлюз моделей за self-signed https.
 
 .DEFAULT_GOAL := help
 LIMIT ?=
@@ -11,8 +12,10 @@ TZ ?= Europe/Volgograd
 NAME ?= agents-news
 # Промпт cron-задачи с подставленными путём и лимитом
 PROMPT = $$(sed 's|__WORKSPACE__|$(CURDIR)|; s|__LIMIT__|$(LIMIT)|' prompts/run.md)
+# Параметры моста из config.yaml
+BRIDGE = $$(uv run python -c 'import yaml; b=yaml.safe_load(open("config.yaml"))["bridge"]; print("--listen", b["listen"], "--upstream", b["upstream"], "--ca-file", b["ca_file"])')
 
-.PHONY: help install run run-once status schedule unschedule tasks logs \
+.PHONY: help install bridge run run-once status schedule unschedule tasks logs \
         lint format test check clean
 
 help: ## Показать список целей
@@ -25,6 +28,9 @@ install: ## Установить зависимости
 	uv sync
 
 # --- Запуск -----------------------------------------------------------------
+
+bridge: ## HTTP-мост к https-шлюзу моделей для провайдера Ouroboros (config: bridge)
+	uv run agents-news-ouroboros-bridge $(BRIDGE)
 
 run: ## Обработать новые новости; каждая роль — задача Ouroboros (LIMIT=N — не больше N)
 	uv run agents-news-ouroboros $(if $(LIMIT),--limit $(LIMIT))

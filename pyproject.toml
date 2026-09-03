@@ -17,6 +17,7 @@ dev = [
 [project.scripts]
 agents-news-ouroboros = "agents_news_ouroboros.main:main"
 agents-news-ouroboros-report = "agents_news_ouroboros.report:main"
+agents-news-ouroboros-bridge = "agents_news_ouroboros.bridge:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -37,6 +37,8 @@ OpenAI-клиента.
 | `prompts/disable-tools.txt` | Инструменты, отключаемые у ролей (список из документации Ouroboros) |
 | `src/agents_news_ouroboros/llm.py` | `OuroborosCLI`: `ask()` → `ouroboros run --jsonl --quiet --memory-mode empty --timeout T --disable-tools …`, ответ из `final.result.result`; `embed()` не поддерживается |
 | `src/agents_news_ouroboros/{main,feeds,pipeline}.py` | Конвейер (копия agents-news) |
+| `src/agents_news_ouroboros/bridge.py` | HTTP-мост localhost → https-шлюз: подмена `Host`, проверка self-signed PEM; нужен потому, что runtime Ouroboros строит httpx-клиент с `trust_env=False` и не доверяет сертификату шлюза |
+| `certs/litellm.home.arpa.pem` | Публичный сертификат шлюза для моста |
 | `src/agents_news_ouroboros/report.py` | `main()`: разбор `--jsonl`-потока, сводка, код возврата |
 | `tests/` | Офлайн-тесты конвейера, разбора потока и CLI-обёртки (поддельный бинарник `ouroboros`) |
 | `README.md` | Назначение, контракт CLI, быстрый старт |
@@ -97,7 +99,7 @@ agents-news, все вызовы модели через `OuroborosCLI`. Сер�
 | Секция | Цели |
 |---|---|
 | Установка | `install` (`uv sync`) |
-| Запуск | `run`, `run-once`, `status` |
+| Запуск | `bridge`, `run`, `run-once`, `status` |
 | Расписание | `schedule`, `unschedule`, `tasks`, `logs` |
 | Проверка | `lint`, `format`, `test`, `check` |
 | Обслуживание | `clean` |
@@ -110,7 +112,7 @@ agents-news, все вызовы модели через `OuroborosCLI`. Сер�
 | Задача `failed`/`cancelled`/таймаут | `RuntimeError` с текстом статуса и `result.result` |
 | Задача `completed`, `objective.status == degraded` | Успех (контракт CLI) |
 | Невалидная строка JSON в потоке | Пропускается с предупреждением в stderr |
-| Провайдер модели Ouroboros недоступен | Задача `failed` с текстом провайдера; лечится настройками Ouroboros (`OPENAI_COMPATIBLE_BASE_URL`, ключ, CA-сертификат через `SSL_CERT_FILE` у процесса сервера), не проектом |
+| Провайдер модели Ouroboros недоступен | Задача `failed` с текстом провайдера `APIConnectionError`; проверить `make bridge` и настройки Ouroboros (`OPENAI_COMPATIBLE_BASE_URL=http://127.0.0.1:4000/v1`, ключ). `SSL_CERT_FILE` не помогает: клиент runtime собран с `trust_env=False` |
 
 ## Тестирование
 
@@ -120,6 +122,8 @@ agents-news, все вызовы модели через `OuroborosCLI`. Сер�
   (shell-скрипт): проверка флагов, склейки промпта, ответа из `final`,
   кодов 2 и `failed`, отсутствия `embed`.
 - `tests/test_pipeline.py`: конвейер на `FakeLLM` (копия agents-news).
+- `tests/test_bridge.py`: мост поверх поддельного upstream — подмена `Host`,
+  сквозные тело, заголовок авторизации и статус 405.
 - Живая проверка: `make run-once` при запущенном сервере с рабочим
   провайдером — статья в `out/<дата>/` и строка `Готово: …`.
 
@@ -129,6 +133,8 @@ agents-news, все вызовы модели через `OuroborosCLI`. Сер�
   `127.0.0.1:8765` или флаг `--start`.
 - Провайдер модели — настройка Ouroboros (`OPENAI_COMPATIBLE_BASE_URL`,
   `OPENAI_COMPATIBLE_API_KEY`, `OUROBOROS_MODEL`); проект их не хранит.
+  Проверено 2026-09-03: без моста задачи падают с `CERTIFICATE_VERIFY_FAILED`
+  (self-signed), без подмены `Host` nginx шлюза отвечает 405 на POST.
 - Python ≥ 3.11.
 - Упакованный `ouroboros` не поддерживает `ouroboros server`; runtime
   поднимается desktop-приложением или `ouroboros run --start` (открывает
