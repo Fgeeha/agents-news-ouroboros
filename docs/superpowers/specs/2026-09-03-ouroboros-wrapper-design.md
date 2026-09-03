@@ -7,14 +7,16 @@
 Запускать существующий конвейер `agents-news` (RSS → дедупликация → поиск
 ракурса → эксперт → независимый рецензент → markdown в `out/`) не напрямую,
 а через Ouroboros: Ouroboros выступает планировщиком и раннером, его агент
-выполняет прогон и отчитывается о результате. Сам конвейер не меняется и не
-копируется — подключается как зависимость.
+выполняет прогон и отчитывается о результате. Проект самостоятельный: код
+конвейера скопирован из agents-news под своим именем пакета, без зависимости
+на исходный репозиторий. Три LLM-роли остаются на шлюзе LiteLLM: у Ouroboros
+одна модель на сервер, а рецензент обязан быть другого семейства, чем эксперт.
 
 ## Не входит в объём
 
 - Замена вызовов LiteLLM на `ouroboros run` внутри конвейера.
 - Дайджест дня, автоматическая починка сбоев агентом.
-- Docker, web-интерфейс, CI.
+- Docker, CI.
 
 ## Компоненты
 
@@ -24,13 +26,14 @@
 | Путь | Назначение |
 |---|---|
 | `Makefile` | Единая точка входа (см. цели ниже) |
-| `pyproject.toml` | Зависимость `agents-news @ git+https://github.com/Fgeeha/agents-news.git`; скрипт `agents-news-ouroboros` |
+| `pyproject.toml` | Самостоятельный пакет `agents_news_ouroboros`; скрипты `agents-news-ouroboros`, `-web`, `-report` |
 | `config.yaml` | Копия конфига конвейера: шлюз, ленты, эксперты |
 | `certs/litellm.home.arpa.pem` | Публичный сертификат шлюза (копия) |
 | `.env.example`, `.gitignore` | `LITELLM_API_KEY`; исключены `.env`, `out/`, `state/`, `.venv/` |
 | `prompts/run.md` | Промпт задачи с плейсхолдерами `__WORKSPACE__` и `__LIMIT__` |
-| `src/agents_news_ouroboros/__init__.py` | `main()`: разбор `--jsonl`-потока, сводка, код возврата |
-| `tests/test_report.py` | Офлайн-тест разбора потока |
+| `src/agents_news_ouroboros/{main,feeds,pipeline,llm,web}.py` | Конвейер и web-интерфейс (копия agents-news) |
+| `src/agents_news_ouroboros/report.py` | `main()`: разбор `--jsonl`-потока, сводка, код возврата |
+| `tests/` | Офлайн-тесты конвейера, web и разбора потока |
 | `README.md` | Назначение, контракт CLI, быстрый старт |
 
 ## Поток данных
@@ -43,7 +46,7 @@
    ```
    ouroboros run --start --workspace $(CURDIR) --memory-mode empty \
      --jsonl --quiet --timeout $(TIMEOUT) "<промпт>" \
-     | uv run agents-news-ouroboros
+     | uv run agents-news-ouroboros-report
    ```
    `TIMEOUT` по умолчанию 3600 с (прогон на CPU-инференсе длится десятки
    минут). `--start` поднимает локальный сервер, если он не отвечает.
@@ -98,7 +101,7 @@
 | Секция | Цели |
 |---|---|
 | Установка | `install` (`uv sync`) |
-| Запуск | `run`, `run-direct` |
+| Запуск | `run`, `run-direct`, `run-once`, `web` |
 | Расписание | `schedule`, `unschedule`, `tasks`, `logs` |
 | Проверка | `lint`, `format`, `test`, `check` |
 | Обслуживание | `clean` |
@@ -129,7 +132,9 @@
   `127.0.0.1:8765` или флаг `--start`.
 - Шлюз LiteLLM `https://litellm.home.arpa/v1` с ключом в `.env`; модели те
   же, что в `agents-news`.
-- Python ≥ 3.11 (как у зависимости).
+- Python ≥ 3.11.
+- Упакованный `ouroboros` не поддерживает `ouroboros server`: runtime поднимает
+  только `ouroboros run --start`, поэтому флаг обязателен в `make run`.
 
 ## Git
 
